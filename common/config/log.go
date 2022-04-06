@@ -18,7 +18,7 @@ func GetLogger() *zap.Logger {
 	encoder := getEncoder()
 	core := zapcore.NewCore(encoder, writeSyncer, zapcore.DebugLevel)
 
-	logger = zap.New(core)
+	logger = zap.New(core, zap.AddCaller())
 	return logger
 }
 
@@ -32,7 +32,7 @@ func getLogWriter() zapcore.WriteSyncer {
 		return zapcore.AddSync(os.Stdout)
 	}
 	lumberJackLogger := &lumberjack.Logger{
-		Filename:   "./test.log",
+		Filename:   Get().LogFile,
 		MaxSize:    10,
 		MaxBackups: 5,
 		MaxAge:     30,

@@ -46,7 +46,7 @@ func (service *k8sserviceInfo) getIp(ctx context.Context) (ip string, last *int3
 					}
 					return true
 				})
-			if *maxLast > 0 {
+			if maxLast != nil && *maxLast > 0 {
 				atomic.AddInt32(maxLast, -1)
 				return ip, maxLast, nil
 			}
@@ -73,8 +73,6 @@ func BuildProxy(ctx context.Context, routes []config.Route) *proxyService {
 			limitConnections: route.Limit,
 			jobs:             make(chan job, 200),
 		}
-		x := int32(route.Limit)
-		serviceInfo.lastConnections.Store(route.URI, &x)
 		pxy.route[route.URI] = &serviceInfo
 	}
 	pxy.init(ctx)

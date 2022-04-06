@@ -34,7 +34,7 @@ type Route struct {
 type config struct {
 	Debug   bool    `yaml:"debug" json:"debug" env:"DEBUG"`
 	Port    int     `yaml:"port" json:"port" env:"PORT"`
-	LodFile string  `yaml:"log_file"`
+	LogFile string  `yaml:"log_file"`
 	Routes  []Route `yaml:"routes"`
 }
 
