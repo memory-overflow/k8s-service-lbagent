@@ -59,6 +59,7 @@ func handle(ctx context.Context, svc *k8sserviceInfo) {
 			}
 			go func() {
 				defer atomic.AddInt32(last, 1) // 对应 ip 剩余连接 +1
+				config.GetLogger().Sugar().Infof("selected ip %s, last conn: %d", ip, *last)
 				transport(fmt.Sprintf("http://%s:%d%s", ip, svc.k8sPort, svc.uri), job.rw, job.req)
 				job.done <- struct{}{}
 			}()

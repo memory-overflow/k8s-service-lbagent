@@ -50,6 +50,7 @@ func (service *k8sserviceInfo) getIp(ctx context.Context) (ip string, last *int3
 				atomic.AddInt32(maxLast, -1)
 				return ip, maxLast, nil
 			}
+			time.Sleep(2 * time.Second)
 		}
 	}
 }

@@ -49,6 +49,17 @@ func syncIps(ctx context.Context, service *k8sserviceInfo) {
 	if err != nil {
 		return
 	}
+	// 三次拉取到的都是同一个 ip 列表再继续，防止 pod 重启过程中dns ip 列表不稳定
+	for i := 0; i < 2; i++ {
+		time.Sleep(100 * time.Millisecond)
+		dupips, err := common.GetDns(ctx, service.k8sHost)
+		if err != nil {
+			return
+		}
+		if !common.SliceSame(ips, dupips) {
+			return
+		}
+	}
 	var newMap sync.Map
 	for _, ip := range ips {
 		if value, ok := service.lastConnections.Load(ip); ok {
