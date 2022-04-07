@@ -25,8 +25,8 @@ func (pxy *proxyService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		io.Copy(rw, strings.NewReader(fmt.Sprintf("no route found %s", uri)))
 		body, _ := ioutil.ReadAll(req.Body)
 		header, _ := json.Marshal(req.Header.Clone())
-		config.GetLogger().Sugar().Errorf("no route for request: %s, header: %s",
-			string(body), string(header))
+		config.GetLogger().Sugar().Errorf("no route for uri %s, request: %s, header: %s",
+			uri, string(body), string(header))
 		return
 	}
 	j := job{
@@ -53,8 +53,8 @@ func handle(ctx context.Context, svc *k8sserviceInfo) {
 				io.Copy(job.rw, strings.NewReader(err.Error()))
 				body, _ := ioutil.ReadAll(job.req.Body)
 				header, _ := json.Marshal(job.req.Header.Clone())
-				config.GetLogger().Sugar().Errorf("header: %s, request: %s handle error: %v",
-					string(header), string(body), err)
+				config.GetLogger().Sugar().Errorf("uri %s, header: %s, request: %s handle error: %v",
+					job.req.RequestURI, string(header), string(body), err)
 				break
 			}
 			go func() {

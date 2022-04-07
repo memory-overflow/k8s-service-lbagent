@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
@@ -16,8 +17,10 @@ func GetLogger() *zap.Logger {
 	}
 	writeSyncer := getLogWriter()
 	encoder := getEncoder()
-	core := zapcore.NewCore(encoder, writeSyncer, zapcore.DebugLevel)
-
+	core := zapcore.NewTee(
+		zapcore.NewCore(encoder, zapcore.AddSync(os.Stdout), zapcore.DebugLevel), // 输出到控制台
+		zapcore.NewCore(encoder, writeSyncer, zapcore.InfoLevel),                 // 写入文件
+	)
 	logger = zap.New(core, zap.AddCaller())
 	return logger
 }
@@ -27,12 +30,9 @@ func getEncoder() zapcore.Encoder {
 }
 
 func getLogWriter() zapcore.WriteSyncer {
-	if Get().Debug {
-		// 输出到终端
-		return zapcore.AddSync(os.Stdout)
-	}
+	now := time.Now()
 	lumberJackLogger := &lumberjack.Logger{
-		Filename:   Get().LogFile,
+		Filename:   Get().LogFile + "." + now.Format("2006-01-02"),
 		MaxSize:    10,
 		MaxBackups: 5,
 		MaxAge:     30,
