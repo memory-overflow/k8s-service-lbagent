@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/memory-overflow/highly-balanced-scheduling-agent/common"
+	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
 )
 
 func (pxy *proxyService) init(ctx context.Context) {
@@ -49,25 +50,40 @@ func syncIps(ctx context.Context, service *k8sserviceInfo) {
 	if err != nil {
 		return
 	}
-	// 三次拉取到的都是同一个 ip 列表再继续，防止 pod 重启过程中dns ip 列表不稳定
-	for i := 0; i < 2; i++ {
-		time.Sleep(100 * time.Millisecond)
-		dupips, err := common.GetDns(ctx, service.k8sHost)
-		if err != nil {
-			return
+	lastIps := []string{}
+	service.lastConnections.Range(
+		func(key, value interface{}) bool {
+			lastIps = append(lastIps, key.(string))
+			return true
+		})
+	if !common.SliceSame(lastIps, ips) {
+		// dns 发生变化，服务有重启
+		// 先锁住服务调度
+		service.locked = true
+		time.Sleep(10 * time.Second) // 等待服务重启完成
+		// 5次拉取到的都是同一个 ip 列表再继续，防止 pod 重启过程中dns ip 列表不稳定
+		for i := 0; i < 4; i++ {
+			time.Sleep(500 * time.Millisecond)
+			dupips, err := common.GetDns(ctx, service.k8sHost)
+			if err != nil {
+				return
+			}
+			if !common.SliceSame(ips, dupips) {
+				return
+			}
 		}
-		if !common.SliceSame(ips, dupips) {
-			return
+		config.GetLogger().Sugar().Infof("new ips: %v for uri: %s", ips, service.uri)
+		var newMap sync.Map
+		for _, ip := range ips {
+			if value, ok := service.lastConnections.Load(ip); ok {
+				newMap.Store(ip, value)
+			} else {
+				x := int32(service.limitConnections)
+				newMap.Store(ip, &x)
+			}
 		}
+		service.lastConnections = newMap
+		service.locked = false
 	}
-	var newMap sync.Map
-	for _, ip := range ips {
-		if value, ok := service.lastConnections.Load(ip); ok {
-			newMap.Store(ip, value)
-		} else {
-			x := int32(service.limitConnections)
-			newMap.Store(ip, &x)
-		}
-	}
-	service.lastConnections = newMap
+
 }

@@ -18,6 +18,7 @@ type job struct {
 }
 
 type k8sserviceInfo struct {
+	locked           bool
 	uri              string
 	k8sPort          int
 	k8sHost          string
@@ -37,18 +38,20 @@ func (service *k8sserviceInfo) getIp(ctx context.Context) (ip string, last *int3
 			// 超时，一直没有空资源使用
 			return "", nil, errors.New("no resources available")
 		default:
-			var maxLast *int32
-			service.lastConnections.Range(
-				func(key, value interface{}) bool {
-					if maxLast == nil || *value.(*int32) > *maxLast {
-						maxLast = value.(*int32)
-						ip = key.(string)
-					}
-					return true
-				})
-			if maxLast != nil && *maxLast > 0 {
-				atomic.AddInt32(maxLast, -1)
-				return ip, maxLast, nil
+			if !service.locked {
+				var maxLast *int32
+				service.lastConnections.Range(
+					func(key, value interface{}) bool {
+						if maxLast == nil || *value.(*int32) > *maxLast {
+							maxLast = value.(*int32)
+							ip = key.(string)
+						}
+						return true
+					})
+				if maxLast != nil && *maxLast > 0 {
+					atomic.AddInt32(maxLast, -1)
+					return ip, maxLast, nil
+				}
 			}
 			time.Sleep(2 * time.Second)
 		}
@@ -68,6 +71,7 @@ func BuildProxy(ctx context.Context, routes []config.Route) *proxyService {
 	}
 	for _, route := range routes {
 		serviceInfo := k8sserviceInfo{
+			locked:           false,
 			uri:              route.URI,
 			k8sHost:          route.K8sHost,
 			k8sPort:          route.K8sPort,
