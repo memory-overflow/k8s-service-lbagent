@@ -16,5 +16,7 @@ func main() {
 
 	config.GetLogger().Sugar().Infof("agent serving on: %d", config.Get().Port)
 	http.Handle("/", service.BuildProxy(context.Background(), config.Get().Routes))
-	http.ListenAndServe(fmt.Sprintf(":%d", config.Get().Port), nil)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", config.Get().Port), nil); err != nil {
+		config.GetLogger().Sugar().Errorf("anegt start error: %v", err)
+	}
 }
