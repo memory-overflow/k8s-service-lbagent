@@ -1,8 +1,10 @@
 package common
 
 import (
+	"math/rand"
 	"runtime/debug"
 	"sort"
+	"time"
 
 	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
 )
@@ -27,4 +29,15 @@ func SliceSame(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// GenerateRandomString 生成随机字符串
+func GenerateRandomString(length int) string {
+	const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	rand.Seed(time.Now().UTC().UnixNano())
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = alphanum[rand.Intn(len(alphanum))]
+	}
+	return string(result)
 }

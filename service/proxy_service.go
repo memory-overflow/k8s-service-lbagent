@@ -12,9 +12,10 @@ import (
 )
 
 type job struct {
-	rw   http.ResponseWriter
-	req  *http.Request
-	done chan struct{}
+	jobId string
+	rw    http.ResponseWriter
+	req   *http.Request
+	done  chan struct{}
 }
 
 type k8sserviceInfo struct {

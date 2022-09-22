@@ -60,6 +60,9 @@ func syncIps(ctx context.Context, service *k8sserviceInfo) {
 		// dns 发生变化，服务有重启
 		// 先锁住服务调度
 		service.locked = true
+		defer func() {
+			service.locked = false
+		}()
 		time.Sleep(10 * time.Second) // 等待服务重启完成
 		// 5次拉取到的都是同一个 ip 列表再继续，防止 pod 重启过程中dns ip 列表不稳定
 		for i := 0; i < 4; i++ {
@@ -83,7 +86,6 @@ func syncIps(ctx context.Context, service *k8sserviceInfo) {
 			}
 		}
 		service.lastConnections = newMap
-		service.locked = false
 	}
 
 }

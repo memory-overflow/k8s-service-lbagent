@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/memory-overflow/highly-balanced-scheduling-agent/common"
 	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
 )
 
@@ -30,11 +31,14 @@ func (pxy *proxyService) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	j := job{
-		rw:   rw,
-		req:  req,
-		done: make(chan struct{}),
+		jobId: common.GenerateRandomString(8),
+		rw:    rw,
+		req:   req,
+		done:  make(chan struct{}),
 	}
+	config.GetLogger().Sugar().Infof("[%s]before push job: %s", j.jobId, j.jobId)
 	service.jobs <- j
+	config.GetLogger().Sugar().Infof("[%s]pushed job: %s", j.jobId, j.jobId)
 	<-j.done // 等待完成处理
 }
 
@@ -53,14 +57,14 @@ func handle(ctx context.Context, svc *k8sserviceInfo) {
 				io.Copy(job.rw, strings.NewReader(err.Error()))
 				body, _ := ioutil.ReadAll(job.req.Body)
 				header, _ := json.Marshal(job.req.Header.Clone())
-				config.GetLogger().Sugar().Errorf("uri %s, header: %s, request: %s handle error: %v",
-					job.req.RequestURI, string(header), string(body), err)
+				config.GetLogger().Sugar().Errorf("[%s]uri %s, header: %s, request: %s handle error: %v",
+					job.jobId, job.req.RequestURI, string(header), string(body), err)
 				break
 			}
 			go func() {
 				defer atomic.AddInt32(last, 1) // 对应 ip 剩余连接 +1
-				config.GetLogger().Sugar().Infof("selected ip %s, last conn: %d", ip, *last)
-				transport(fmt.Sprintf("http://%s:%d%s", ip, svc.k8sPort, svc.uri), job.rw, job.req)
+				config.GetLogger().Sugar().Infof("[%s]selected ip %s, last conn: %d", job.jobId, ip, *last)
+				transport(fmt.Sprintf("http://%s:%d%s", ip, svc.k8sPort, svc.uri), job.rw, job.req, job.jobId)
 				job.done <- struct{}{}
 			}()
 		default:
@@ -69,18 +73,18 @@ func handle(ctx context.Context, svc *k8sserviceInfo) {
 	}
 }
 
-func transport(target string, rw http.ResponseWriter, req *http.Request) {
+func transport(target string, rw http.ResponseWriter, req *http.Request, jobId string) {
 	header, _ := json.Marshal(req.Header.Clone())
 
-	config.GetLogger().Sugar().Infof("before transport %s, header: %s", target, string(header))
+	config.GetLogger().Sugar().Infof("[%s]before transport %s, header: %s", jobId, target, string(header))
 	u, err := url.Parse(target)
 	if err != nil {
 		rw.WriteHeader(502)
 		io.Copy(rw, strings.NewReader(err.Error()))
-		config.GetLogger().Sugar().Errorf("transport url failed: %v", err)
+		config.GetLogger().Sugar().Errorf("[%s]transport url failed: %v", jobId, err)
 		return
 	}
 	proxy := httputil.NewSingleHostReverseProxy(u)
 	proxy.ServeHTTP(rw, req)
-	config.GetLogger().Sugar().Infof("success transport %s, header: %s", target, string(header))
+	config.GetLogger().Sugar().Infof("[%s] success transport %s, header: %s", jobId, target, string(header))
 }

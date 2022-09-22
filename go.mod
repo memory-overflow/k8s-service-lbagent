@@ -4,8 +4,10 @@ go 1.16
 
 require (
 	github.com/jinzhu/configor v1.2.1
+	github.com/labstack/gommon v0.3.1 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/tidwall/gjson v1.14.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0
