@@ -12,13 +12,13 @@ import (
 func (pxy *proxyService) init(ctx context.Context) {
 	// 定时打印后端信息
 	go func() {
-		tick := time.NewTicker(10 * time.Minute)
+		tick := time.NewTicker(10 * time.Second)
 		for range tick.C {
 			for _, r := range pxy.route {
 				config.GetLogger().Sugar().Infof("current ips for url: %s, loacked: %v", r.uri, r.locked)
 				r.lastConnections.Range(
 					func(key, value interface{}) bool {
-						config.GetLogger().Sugar().Infof("    %s: %d", key.(string), value.(int))
+						config.GetLogger().Sugar().Infof("    %s: %d", key.(string), *value.(*int32))
 						return true
 					})
 			}
