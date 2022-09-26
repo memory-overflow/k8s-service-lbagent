@@ -10,6 +10,21 @@ import (
 )
 
 func (pxy *proxyService) init(ctx context.Context) {
+	// 定时打印后端信息
+	go func() {
+		tick := time.NewTicker(10 * time.Minute)
+		for range tick.C {
+			for _, r := range pxy.route {
+				config.GetLogger().Sugar().Infof("current ips for url: %s, loacked: %v", r.uri, r.locked)
+				r.lastConnections.Range(
+					func(key, value interface{}) bool {
+						config.GetLogger().Sugar().Infof("    %s: %d", key.(string), value.(int))
+						return true
+					})
+			}
+		}
+	}()
+
 	// 开启动态同步服务 ip 列表的后台线程
 	go func() {
 		defer common.Recover()
