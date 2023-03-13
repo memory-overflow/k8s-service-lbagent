@@ -55,6 +55,7 @@ iptables 模式下，负载均衡策略为随机选择 pod，并且连接失败�
 ## 方案2（推荐方案）
 另外一种方案类似于 kube-proxy，在转码服务前面再做一层负载均衡 agent，这个 agent 不侵入 k8s 整个系统，本质是一个 pod，可以参考下图
 
+![图1](https://github.com/memory-overflow/strict-load-balancing-k8s/blob/master/images/6e51437089e94a298cf077534359455a.webp)
 
 
 可以看到，在 agent pod 里面，是直接掉用到转码的 pod，那么 agent pod 有两个必要工作。
@@ -66,11 +67,9 @@ iptables 模式下，负载均衡策略为随机选择 pod，并且连接失败�
 ### 维护 pods ip 列表
 如果不依赖 k8s 维护 pods ip 列表还是比较麻烦的，但是依赖 k8s 有一个简单的方法。k8s 有一种无头服务（Headless Services），无头服务不会分配 Cluster IP，但是在 k8s-dns 服务里面会有所有 pods id 的记录，所以可以通过 k8s-dns 服务获取到无头服务的 pods ip 列表。
 
-
-![图1](https://github.com/memory-overflow/strict-load-balancing-k8s/blob/master/images/6e51437089e94a298cf077534359455a.webp)
-
 ![图1](https://github.com/memory-overflow/strict-load-balancing-k8s/blob/master/images/6bee6d6f232a47ac8fe6bac06cba2ad2.webp)
 
+![图1](https://github.com/memory-overflow/strict-load-balancing-k8s/blob/master/images/057d5007ecf04a498d5468903daa485a.webp)
 
 考虑到 pod 有重启或者增删都会导致 pods ip 列表发生变化，所以我们定期轮询 kube-dns 获取到 pods id 列表更新。但是当pod重启的时候，dns 返回的 ip 列表不是很稳定。这里会重复查询5次，每次间隔 0.5s，5次结果都相同才信任。否则过10s后再轮询。
 
