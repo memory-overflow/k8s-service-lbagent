@@ -49,4 +49,4 @@ routes:
 5. `kubectl apply -f k8s-resource` 部署服务。
 
 ## 调用
-在其他 pod 内部，通过原服务 service 调度的地方，替换成 `http://lb-agent.[namespace].svc.cluster.local:8080`，比如原来调用是 `http://yt-server-video-codec.ai-media.svc.cluster.local:8080//VideoCodecService/VideoCodec`，现在替换成 `http://la-agent.ai-media.svc.cluster.local:8080//VideoCodecService/VideoCodec` 即可。
+在其他 pod 内部，通过原服务 service 调度的地方，替换成 `http://lb-agent.[namespace].svc.cluster.local:8080`，比如原来调用是 `http://yt-server-video-codec.ai-media.svc.cluster.local:8080/VideoCodecService/VideoCodec`，现在替换成 `http://la-agent.ai-media.svc.cluster.local:8080/VideoCodecService/VideoCodec` 即可。
