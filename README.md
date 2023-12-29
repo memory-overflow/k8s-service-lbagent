@@ -34,7 +34,7 @@ routes:
 
 ## 打包镜像
 ### 使用打包好的镜像
-镜像地址：
+镜像地址：jisuanke/k8s-service-lbagent:latest
 
 ### 手动打包
 配置好 golang 环境后，修改 `scripts/build_docker.sh` 脚本中的 `dockername` 镜像地址，然后执行 `sh scripts/build_docker.sh` 完成镜像打包。
