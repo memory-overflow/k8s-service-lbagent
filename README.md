@@ -44,9 +44,9 @@ routes:
 推荐使用 configmap 挂载配置。
 1. 把 k8s-resource 下的资源 copy 到 k8s 环境机器上。
 2. 按照自身需求修改 [`k8s-resource/configmap.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/configmap.yaml) 文件的一些配置，修改 namespace。
-3. 修改 [`k8s-resource/deployment_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/deployment_agent.yaml) 文件中的 namespace。
-4. 修改 [`k8s-resource/service_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/service_agent.yaml) 文件中的 namespace。
-5. `kubectl apply -f k8s-resource` 部署服务。
+3. 修改 [`k8s-resource/deployment_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/deployment_agent.yaml) 文件中的 namespace。一般 kube config 存放在主机上的 /root/.kube 目录，如果不在当前目录，替换成对应的主机目录。
+5. 修改 [`k8s-resource/service_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/service_agent.yaml) 文件中的 namespace。
+6. `kubectl apply -f k8s-resource` 部署服务。
 
 ## 调用
 在其他 pod 内部，通过原服务 service 调度的地方，替换成 `http://lb-agent.[namespace].svc.cluster.local:8080`，比如原来调用是 `http://yt-server-video-codec.ai-media.svc.cluster.local:8080/VideoCodecService/VideoCodec`，现在替换成 `http://la-agent.ai-media.svc.cluster.local:8080/VideoCodecService/VideoCodec` 即可。
