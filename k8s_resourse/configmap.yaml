@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+  name: lb-agent-config
+  namespace: ai-media
+data:
+  config.yaml: |
+    # 该配置文件仅在本地环境生效, 在容器内会被configMap的内容覆盖
+    debug: false
+    port: 8080
+    log_file: ./log/lb-agent.log
+    kube_config_file: /root/kube/config
+
+    routes:
+      - uri: /VideoCodecService/VideoCodec
+        limit: 2
+        service_name: yt-server-video-codec
+        namespace: ai-media
+        http_port: 20109

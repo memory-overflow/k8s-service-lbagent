@@ -10,10 +10,9 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
-	"sync/atomic"
 
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common"
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/common"
+	"github.com/memory-overflow/k8s-service-lbagent/common/config"
 )
 
 // ServeHTTP ...
@@ -62,9 +61,9 @@ func handle(ctx context.Context, svc *k8sserviceInfo) {
 				break
 			}
 			go func() {
-				defer atomic.AddInt32(last, 1) // 对应 ip 剩余连接 +1
+				defer svc.IncreaseConnection(ip)
 				config.GetLogger().Sugar().Infof("[%s]selected ip %s, last conn: %d", job.jobId, ip, *last)
-				transport(fmt.Sprintf("http://%s:%d%s", ip, svc.k8sPort, svc.uri), job.rw, job.req, job.jobId)
+				transport(fmt.Sprintf("http://%s:%d%s", ip, svc.httpPort, svc.uri), job.rw, job.req, job.jobId)
 				job.done <- struct{}{}
 			}()
 		default:

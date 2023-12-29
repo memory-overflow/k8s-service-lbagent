@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/common/config"
 )
 
 // ExternalIP 获取服务ip

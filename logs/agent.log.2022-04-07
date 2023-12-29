@@ -1,4 +1,0 @@
-2022-04-07T15:22:26.178+0800	INFO	config/config.go:57	load config successfully: {"debug":true,"port":8080,"LogFile":"./logs/agent.log","Routes":[{"URI":"/VideoCodecService/VideoCodec","Limit":2,"K8sHost":"localhost","K8sPort":20109}]}
-2022-04-07T15:22:26.178+0800	INFO	cmd/main.go:17	agent serving on: 8080
-2022-04-07T15:22:27.803+0800	INFO	config/config.go:57	load config successfully: {"debug":true,"port":8080,"LogFile":"./logs/agent.log","Routes":[{"URI":"/VideoCodecService/VideoCodec","Limit":2,"K8sHost":"localhost","K8sPort":20109}]}
-2022-04-07T15:22:27.803+0800	INFO	cmd/main.go:17	agent serving on: 8080

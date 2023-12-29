@@ -2,9 +2,11 @@
 debug: true
 port: 8080
 log_file: ./logs/agent.log
+kube_config_file: /root/kube/config
 
 routes:
   - uri: /VideoCodecService/VideoCodec
-    limit: 2
-    k8s_host: localhost
-    K8s_port: 20109
+    limit: 1
+    service_name: yt-server-video-codec
+    namespace: ai-media
+    http_port: 20109

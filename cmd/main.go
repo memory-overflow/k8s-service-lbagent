@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common"
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/service"
+	"github.com/memory-overflow/k8s-service-lbagent/common"
+	"github.com/memory-overflow/k8s-service-lbagent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/service"
 )
 
 func main() {

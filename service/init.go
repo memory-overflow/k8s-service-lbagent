@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common"
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/common"
+	"github.com/memory-overflow/k8s-service-lbagent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/k8s"
 )
 
 func (pxy *proxyService) init(ctx context.Context) {
@@ -15,7 +16,7 @@ func (pxy *proxyService) init(ctx context.Context) {
 		tick := time.NewTicker(10 * time.Second)
 		for range tick.C {
 			for _, r := range pxy.route {
-				config.GetLogger().Sugar().Infof("current ips for url: %s, loacked: %v", r.uri, r.locked)
+				config.GetLogger().Sugar().Infof("current ips for url: %s", r.uri)
 				r.lastConnections.Range(
 					func(key, value interface{}) bool {
 						config.GetLogger().Sugar().Infof("    %s: %d", key.(string), *value.(*int32))
@@ -25,7 +26,7 @@ func (pxy *proxyService) init(ctx context.Context) {
 		}
 	}()
 
-	// 开启动态同步服务 ip 列表的后台线程
+	// 通过 informar 机制监听 endpoints 的变化，动态更新 service ip 列表
 	go func() {
 		defer common.Recover()
 		pxy.syncRoutes(ctx)
@@ -38,33 +39,54 @@ func (pxy *proxyService) init(ctx context.Context) {
 }
 
 func (pxy *proxyService) syncRoutes(ctx context.Context) {
-	tick := time.NewTicker(2 * time.Second)
+	// 优化，不再轮询，通过 k8s informar 机制动态更新更优雅
+	// tick := time.NewTicker(2 * time.Second)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-tick.C:
-			wg := sync.WaitGroup{}
-			for _, service := range pxy.route {
-				wg.Add(1)
-				go func(service *k8sserviceInfo) {
-					defer wg.Done()
-					defer common.Recover()
-					syncIps(ctx, service)
-				}(service)
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return
+	// 	case <-tick.C:
+	// 		wg := sync.WaitGroup{}
+	// 		for _, service := range pxy.route {
+	// 			wg.Add(1)
+	// 			go func(service *k8sserviceInfo) {
+	// 				defer wg.Done()
+	// 				defer common.Recover()
+	// 				syncIps(ctx, service)
+	// 			}(service)
+	// 		}
+	// 		wg.Wait()
+	// 	}
+	// }
+	k8s.GetKubeClient() // 先初始化 client
+
+	for key := range pxy.route {
+		service := pxy.route[key]
+		// 初始化先把所有服务的 ip 都同步一遍
+		syncIps(ctx, service)
+		// 注册到全局的 k8s informar 监听中
+		k8s.RegisterMonitorService(service.serviceName, service.endpointsNodifyCh)
+
+		go func() {
+			for range service.endpointsNodifyCh {
+				// 监听通知，如果 service endpoints 出现变动，重新同步 ip
+				syncIps(ctx, service)
 			}
-			wg.Wait()
-		}
+		}()
 	}
-
 }
 
 func syncIps(ctx context.Context, service *k8sserviceInfo) {
-	ips, err := common.GetDns(ctx, service.k8sHost)
+	ips, err := k8s.GetAvailableEndpoints(service.serviceName, service.namespace)
 	if err != nil {
+		config.GetLogger().Sugar().Errorf("k8s.GetAvailableEndpoints error: %v", err)
 		return
 	}
+
+	service.cond.L.Lock()
+	defer service.cond.L.Unlock()
+
 	lastIps := []string{}
 	service.lastConnections.Range(
 		func(key, value interface{}) bool {
@@ -72,35 +94,23 @@ func syncIps(ctx context.Context, service *k8sserviceInfo) {
 			return true
 		})
 	if !common.SliceSame(lastIps, ips) {
-		// dns 发生变化，服务有重启
-		// 先锁住服务调度
-		service.locked = true
-		defer func() {
-			service.locked = false
-		}()
-		time.Sleep(10 * time.Second) // 等待服务重启完成
-		// 5次拉取到的都是同一个 ip 列表再继续，防止 pod 重启过程中dns ip 列表不稳定
-		for i := 0; i < 4; i++ {
-			time.Sleep(500 * time.Millisecond)
-			dupips, err := common.GetDns(ctx, service.k8sHost)
-			if err != nil {
-				return
-			}
-			if !common.SliceSame(ips, dupips) {
-				return
-			}
-		}
+		// ip 发生变更
+		var tot int32 = 0
 		config.GetLogger().Sugar().Infof("new ips: %v for uri: %s", ips, service.uri)
 		var newMap sync.Map
 		for _, ip := range ips {
 			if value, ok := service.lastConnections.Load(ip); ok {
 				newMap.Store(ip, value)
+				tot += *(value.(*int32))
 			} else {
 				x := int32(service.limitConnections)
 				newMap.Store(ip, &x)
+				tot += x
 			}
 		}
+		service.totalConnections = int(tot)
 		service.lastConnections = newMap
+		service.cond.Broadcast()
 	}
 
 }

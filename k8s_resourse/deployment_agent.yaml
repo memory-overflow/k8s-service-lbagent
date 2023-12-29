@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    cpaas.io/creator: admin
+    deployment.kubernetes.io/revision: "1"
+    description: k8s 负载均衡调度代理
+  generation: 1
+  labels:
+    k8s-app: lb-agent
+    qcloud-app: lb-agent
+  name: lb-agent
+  namespace: ai-media
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: lb-agent
+      qcloud-app: lb-agent
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        cpaas.io/creator: admin
+        configmap.reloader.stakater.com/reload: lb-agent-config
+      creationTimestamp: null
+      labels:
+        k8s-app: lb-agent
+        qcloud-app: lb-agent
+    spec:
+      containers:
+      - env:
+        image: xxxx
+        imagePullPolicy: Always
+        name: lb-agent-container
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1024Mi
+          requests:
+            cpu: "0.5"
+            memory: 512Mi
+        securityContext:
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /usr/local/services/ai-media/conf/config.yaml
+          subPath: config.yaml
+          name: config
+          readOnly: true
+        - mountPath: /data/ti-platform
+          name: volume2
+        - mountPath: /etc/localtime
+          name: tz
+          readOnly: true
+        - mountPath: /root/kube
+          name: kube-config
+          readOnly: true
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 20
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: lb-agent-config
+          items:
+          - key: config.yaml
+            path: config.yaml
+        name: config
+      - hostPath:
+          path: /data/ti-platform
+          type: DirectoryOrCreate
+        name: volume2
+      - name: tz
+        hostPath:
+          path: /etc/localtime
+          type: ""
+      - hostPath:
+          path: /root/.kube/
+          type: DirectoryOrCreate
+        name: kube-config

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/memory-overflow/highly-balanced-scheduling-agent/common/config"
+	"github.com/memory-overflow/k8s-service-lbagent/common/config"
 )
 
 type job struct {
@@ -19,42 +19,74 @@ type job struct {
 }
 
 type k8sserviceInfo struct {
-	locked           bool
-	uri              string
-	k8sPort          int
-	k8sHost          string
+	uri         string
+	serviceName string
+	namespace   string
+	httpPort    int
+
 	limitConnections int
+
 	// limitMap the concurrency limit for every uri
-	lastConnections sync.Map
-	jobs            chan job
+	lastConnections   sync.Map
+	jobs              chan job
+	endpointsNodifyCh chan struct{}
+	cond              sync.Cond
+	totalConnections  int
+}
+
+func (service *k8sserviceInfo) IncreaseConnection(ip string) {
+	service.cond.L.Lock()
+	defer service.cond.L.Unlock()
+	if v, ok := service.lastConnections.Load(ip); ok {
+		atomic.AddInt32(v.(*int32), 1)
+		service.totalConnections++
+		service.cond.Broadcast()
+	}
 }
 
 func (service *k8sserviceInfo) getIp(ctx context.Context) (ip string, last *int32, err error) {
 	timeout := time.NewTimer(2 * time.Hour)
-	for {
-		select {
-		case <-ctx.Done():
-			return "", nil, ctx.Err()
-		case <-timeout.C:
-			// 超时，一直没有空资源使用
-			return "", nil, errors.New("no resources available")
-		default:
-			if !service.locked {
-				var maxLast *int32
-				service.lastConnections.Range(
-					func(key, value interface{}) bool {
-						if maxLast == nil || *value.(*int32) > *maxLast {
-							maxLast = value.(*int32)
-							ip = key.(string)
-						}
-						return true
-					})
-				if maxLast != nil && *maxLast > 0 {
-					atomic.AddInt32(maxLast, -1)
-					return ip, maxLast, nil
+	service.cond.L.Lock()
+	defer service.cond.L.Unlock()
+	waitCh := make(chan struct{})
+	defer close(waitCh)
+	// 等待条件，剩余连接数大于 0
+	go func() {
+		for err == nil && service.totalConnections == 0 {
+			service.cond.Wait()
+		}
+		if err != nil {
+			// 主线程可能因为超时退出了，需要解锁 cond.Wait 拿到的锁
+			service.cond.L.Unlock()
+			return
+		}
+		waitCh <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return "", nil, ctx.Err()
+	case <-timeout.C:
+		// 超时，一直没有空资源使用
+		return "", nil, errors.New("no resources available")
+	case <-waitCh:
+		// 等到条件才 unlock 锁
+		var maxLast *int32
+		service.lastConnections.Range(
+			func(key, value interface{}) bool {
+				if maxLast == nil || *value.(*int32) > *maxLast {
+					maxLast = value.(*int32)
+					ip = key.(string)
 				}
-			}
-			time.Sleep(2 * time.Second)
+				return true
+			})
+
+		if maxLast != nil && *maxLast > 0 {
+			atomic.AddInt32(maxLast, -1)
+			service.totalConnections--
+			return ip, maxLast, nil
+		} else {
+			return "", nil, errors.New("no resources available")
 		}
 	}
 }
@@ -72,12 +104,14 @@ func BuildProxy(ctx context.Context, routes []config.Route) *proxyService {
 	}
 	for _, route := range routes {
 		serviceInfo := k8sserviceInfo{
-			locked:           false,
-			uri:              route.URI,
-			k8sHost:          route.K8sHost,
-			k8sPort:          route.K8sPort,
-			limitConnections: route.Limit,
-			jobs:             make(chan job, 200),
+			uri:               route.URI,
+			serviceName:       route.ServiceName,
+			namespace:         route.Namespace,
+			httpPort:          route.HttpPort,
+			limitConnections:  route.Limit,
+			cond:              *sync.NewCond(&sync.Mutex{}),
+			jobs:              make(chan job, 256),
+			endpointsNodifyCh: make(chan struct{}, 256),
 		}
 		pxy.route[route.URI] = &serviceInfo
 	}

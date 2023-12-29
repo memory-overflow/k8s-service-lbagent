@@ -2,6 +2,4 @@ pack
 log
 logs
 
-logs/*
-log/*
 pack/*

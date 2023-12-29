@@ -25,27 +25,28 @@ func Get() *config {
 
 // Routes
 type Route struct {
-	URI     string `yaml:"uri"`
-	Limit   int    `yaml:"limit"`
-	K8sHost string `yaml:"k8s_host"`
-	K8sPort int    `yaml:"K8s_port"`
+	URI         string `yaml:"uri"`
+	Limit       int    `yaml:"limit"`
+	ServiceName string `yaml:"service_name"`
+	Namespace   string `yaml:"namespace"`
+	HttpPort    int    `yaml:"http_port"`
 }
 
 type config struct {
-	Debug   bool    `yaml:"debug" json:"debug" env:"DEBUG"`
-	Port    int     `yaml:"port" json:"port" env:"PORT"`
-	LogFile string  `yaml:"log_file"`
-	Routes  []Route `yaml:"routes"`
+	Debug          bool    `yaml:"debug" json:"debug" env:"DEBUG"`
+	Port           int     `yaml:"port" json:"port" env:"PORT"`
+	LogFile        string  `yaml:"log_file"`
+	KubeConfigFile string  `yaml:"kube_config_file"`
+	Routes         []Route `yaml:"routes"`
 }
 
 // Init ...
 func Init(configPath string) {
 	once.Do(func() {
 		loader := configor.New(&configor.Config{
-			AutoReload:           true,
-			AutoReloadInterval:   5 * time.Second,
-			AutoReloadCallback:   reload,
-			ErrorOnUnmatchedKeys: true,
+			AutoReload:         true,
+			AutoReloadInterval: 5 * time.Second,
+			AutoReloadCallback: reload,
 		})
 		_config = &config{}
 		err := loader.Load(_config, configPath)
