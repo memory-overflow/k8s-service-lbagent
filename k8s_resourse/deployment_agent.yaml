@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
       - env:
-        image: xxxx
+        image: jisuanke/k8s-service-lbagent:latest
         imagePullPolicy: Always
         name: lb-agent-container
         resources:

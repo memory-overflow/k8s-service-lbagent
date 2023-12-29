@@ -37,15 +37,15 @@ routes:
 镜像地址：
 
 ### 手动打包
-配置好 golang 环境后，修改 `scripts/build_docker.sh` 脚本中的 `dockername` 镜像地址，然后执行 `scripts/build_docker.sh` 完成镜像打包。
+配置好 golang 环境后，修改 `scripts/build_docker.sh` 脚本中的 `dockername` 镜像地址，然后执行 `sh scripts/build_docker.sh` 完成镜像打包。
 
 
 ## 镜像部署
 推荐使用 configmap 挂载配置。
 1. 把 k8s-resource 下的资源 copy 到 k8s 环境机器上。
-2. 按照自身需求修改 [`k8s-resource/configmap.yaml`]() 文件的一些配置，修改 namespace。
-3. 修改 [`k8s-resource/deployment_agent.yaml`]() 文件中的 namespace。
-4. 修改 [`k8s-resource/service_agent.yaml`]() 文件中的 namespace。
+2. 按照自身需求修改 [`k8s-resource/configmap.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/configmap.yaml) 文件的一些配置，修改 namespace。
+3. 修改 [`k8s-resource/deployment_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/deployment_agent.yaml) 文件中的 namespace。
+4. 修改 [`k8s-resource/service_agent.yaml`](https://github.com/memory-overflow/k8s-service-lbagent/blob/master/k8s_resourse/service_agent.yaml) 文件中的 namespace。
 5. `kubectl apply -f k8s-resource` 部署服务。
 
 ## 调用

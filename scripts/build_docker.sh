@@ -12,7 +12,6 @@ number=$1
 version=`git log  | grep commit | awk {'print $2'} | head -n 1`
 dockername="jisuanke/k8s-service-lbagent:v${number}-${version}"
 
-dockername="jisuanke/k8s-service-lbagent:latest"
 
 if [[ "${number}" == "debug" ]]; then
   go mod vendor
